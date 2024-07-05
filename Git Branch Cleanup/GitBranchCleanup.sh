@@ -5,13 +5,18 @@ read -p "Enter your name ( * for all ): " name
 if [[ ${name} == "*" ]]; then
     echo "---------------------------"
     echo "Displaying branches for all"
-    to_delete=false
+    view_all=true
 else
+    if [[ ${name} == "jenkins" ]] then
+        echo "---------------------------------------"
+        echo "!!Not advised to see jenkins branches!!"
+        exit 0
+    fi
+
+    view_all=false
     # Define a list of options
     options=("View Branches" "View and Delete Branches" "Quit")
     # Present the options to the user
-
-    #statements
     PS3="Select an option: "
     select opt in "${options[@]}"
     do
@@ -40,14 +45,22 @@ git fetch --prune origin
 echo "     Branch updated !!!     "
 echo "----------------------------"
 
-# Iterating over the branches and filtering it based on the provided name.
-git for-each-ref --format='%(authorname)|%(refname)' --sort=authorname refs/remotes | while IFS='|' read -r author refname; do
-    if [[ ${author,,} == *${name,,}* ]] || [[ ${name} == "*" ]] && echo $refname | grep -q '^refs/remotes/origin/\(bug\|feature\|fix\)'; then
-        echo "<!> $refname to be deleted.<!> ----------- Author: $author.";
-        branch_name=$(echo $refname | sed 's/^refs\/remotes\/origin\///')
+if $view_all; then
+    git for-each-ref --format='<!> %(refname) <!> ----------- Author: %(authorname).' --sort=authorname refs/remotes/origin \
+    | grep -E 'refs/remotes/origin/(bug|feature|fix)' \
+    | grep -v 'Author: jenkins.'
+else
+    # Iterating over the branches and filtering it based on the provided name.
+    git for-each-ref --format='%(authorname)|%(refname:short)' --sort=authorname refs/remotes/origin \
+        | grep -E 'origin/(bug|feature|fix)' \
+        | grep -iE ".*${name}.*\|" \
+        | grep -v "jenkins|" \
+        | while IFS='|' read -r author branch; do
+        
+        echo "<!> $branch to be deleted.<!> ----------- Author: $author.";
         if $to_delete; then
-            echo "Deleting $branch_name"
-            git push origin --delete $branch_name
+            echo "Deleting ${branch#origin/}"
+            git push origin --delete ${branch#origin/}
         fi
-    fi
-done
+    done
+fi
