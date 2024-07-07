@@ -59,8 +59,13 @@ else
         
         echo "<!> $branch to be deleted.<!> ----------- Author: $author.";
         if $to_delete; then
-            echo "Deleting ${branch#origin/}"
-            git push origin --delete ${branch#origin/}
+            read -p "Delete branch ${branch#origin/}? (y/n): " confirm
+            if [[ $confirm == [yY] ]]; then
+                echo "Deleting branch ${branch#origin/}..."
+                git push origin --delete ${branch#origin/}
+            else
+                echo "Skipping deletion of branch ${branch#origin/}."
+            fi
         fi
     done
 fi
